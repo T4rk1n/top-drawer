@@ -1,0 +1,8 @@
+pytest
+thesaurus
+appdirs
+stringcase
+colorama
+ruamel.yaml
+aiohttp
+precept
