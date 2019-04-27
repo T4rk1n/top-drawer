@@ -144,6 +144,7 @@ class TopDrawer(CliApp):
                         t = asyncio.ensure_future(validate_pypi(
                             session, s
                         ))
+                        # noinspection PyTypeChecker
                         t.add_done_callback(
                             functools.partial(_done,
                                               synonym=s,
@@ -155,6 +156,7 @@ class TopDrawer(CliApp):
                         t = asyncio.ensure_future(validate_npm(
                             session, s
                         ))
+                        # noinspection PyTypeChecker
                         t.add_done_callback(
                             functools.partial(_done,
                                               synonym=s,
