@@ -177,6 +177,9 @@ class TopDrawer(CliApp):
             ]
             self.logger.debug(f'{len(valids)} valid out of {len(synonyms)}')
             await asyncio.sleep(0.30)
+            if not valids:
+                print('No valid results!')
+                sys.exit(1)
             if not full:
                 print('\n'.join(format_table(valids)))
             else:
