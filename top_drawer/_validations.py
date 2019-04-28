@@ -21,8 +21,7 @@ async def validate_pypi(session, package_name):
 
 
 async def validate_npm(session, package_name):
-    # url = f'https://www.npmjs.com/package/{package_name}'
-    url = f'https://api.npms.io/v2/search?q={package_name}'
+    url = f'https://api.npms.io/v2/package/{package_name}'
     return not await validate(
         session, url, validate_status_ok
     )
