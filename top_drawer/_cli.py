@@ -40,13 +40,13 @@ class TopDrawer(CliApp):
     """
     Search for synonyms and validate if the name is available on pypi or npm.
     """
-    _prog_name = 'top-drawer'
-    _version = __version__
+    prog_name = 'top-drawer'
+    version = __version__
 
     def __init__(self):
         super().__init__()
         self._cache_file = os.path.join(
-            appdirs.user_cache_dir(self._prog_name),
+            appdirs.user_cache_dir(self.prog_name),
             'validations.yml'
         )
 
@@ -66,31 +66,36 @@ class TopDrawer(CliApp):
             yaml.dump(obj, cf, Dumper=yaml.RoundTripDumper)
 
     @Command(
-        Argument(['word'], {
-            'help': 'The word to generate synonyms for'
-        }),
-        Argument(['-c', '--casing'], {
-            'choices': ['snakecase', 'spinalcase'],
-            'default': 'spinalcase',
-            'help': 'The casing to apply to synonyms'
-        }),
-        Argument(['--pypi'], {
-            'help': 'Disable validation on pypi',
-            'action': 'store_false'
-        }),
-        Argument(['--npm'], {
-            'help': 'Disable validation on npm',
-            'action': 'store_false'
-        }),
-        Argument(['-f', '--full'], {
-            'help': 'Include the invalids in the output',
-            'action': 'store_true'
-        }),
-        Argument(['--definition'], {
-            'help': 'Set to a number representing the tab of the search result'
-                    ' on thesaurus.com or `all`.',
-            'default': '0'
-        }),
+        Argument(
+            'word',
+            help='The word to generate synonyms for'
+        ),
+        Argument(
+            '-c', '--casing',
+            choices=['snakecase', 'spinalcase'],
+            default='spinalcase',
+            help='The casing to apply to synonyms'
+        ),
+        Argument('--pypi',
+            help='Disable validation on pypi',
+            action='store_false'
+        ),
+        Argument(
+            '--npm',
+            help='Disable validation on npm',
+            action='store_false'
+        ),
+        Argument(
+            '-f', '--full',
+            help='Include the invalids in the output',
+            action='store_true'
+        ),
+        Argument(
+            '--definition',
+            help='Set to a number representing the tab of the search result'
+                 ' on thesaurus.com or `all`.',
+            default='0'
+        ),
         description='Search for valid synonyms of the provided word.'
     )
     async def search(self, word, casing, pypi, npm, full, definition):
@@ -199,17 +204,20 @@ class TopDrawer(CliApp):
         await asyncio.gather(sp, op)
 
     @Command(
-        Argument(['word'], {
-            'help': 'The word to generate synonyms'
-        }),
-        Argument(['--pypi'], {
-            'help': 'Disable validation on pypi',
-            'action': 'store_false'
-        }),
-        Argument(['--npm'], {
-            'help': 'Disable validation on npm',
-            'action': 'store_false'
-        }),
+        Argument(
+            'word',
+            help='The word to generate synonyms'
+        ),
+        Argument(
+            '--pypi',
+            help='Disable validation on pypi',
+            action='store_false'
+        ),
+        Argument(
+            '--npm',
+            help='Disable validation on npm',
+            action='store_false'
+        ),
         description='Validate a name is available'
     )
     async def validate(self, word, pypi, npm):
