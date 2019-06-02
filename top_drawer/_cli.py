@@ -12,7 +12,8 @@ import thesaurus
 from ruamel import yaml
 from colorama import Fore
 
-from precept import format_table, CliApp, Argument, Command, spinner, colorize
+from precept import Precept, Argument, Command
+from precept.console import format_table, spinner, colorize
 
 from top_drawer._version import __version__
 from top_drawer._validations import validate_pypi, validate_npm
@@ -36,7 +37,7 @@ def format_valid(valid):
     return colorize('INVALID', fg=Fore.RED)
 
 
-class TopDrawer(CliApp):
+class TopDrawer(Precept):
     """
     Search for synonyms and validate if the name is available on pypi or npm.
     """
