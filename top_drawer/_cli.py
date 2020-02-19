@@ -1,34 +1,27 @@
 import asyncio
 import functools
-import itertools
 import sys
 import os
 
 import appdirs
 import aiohttp
 import stringcase
-import thesaurus
 
 from ruamel import yaml
 from colorama import Fore
 
-from precept import Precept, Argument, Command
+from precept import Precept, Command
 from precept.console import format_table, spinner, colorize
 
 from top_drawer._version import __version__
 from top_drawer._validations import validate_pypi, validate_npm
+from top_drawer._config import TopDrawerConfig
+from top_drawer._thesaurus import thesaurus, reduce_thesaurus
+from top_drawer import _args
+
 
 UNDONE = 'undone'
-
-
-def get_synonyms(word, definition=0, relevance=(1, 2, 3)):
-    w = thesaurus.Word(word)
-    synonyms = w.synonyms(definition,
-                          relevance=list(relevance))
-    if definition == 'all' or isinstance(definition, list):
-        synonyms = set(itertools.chain(*synonyms))
-
-    return synonyms
+undefined = object()
 
 
 def format_valid(valid):
@@ -43,63 +36,78 @@ class TopDrawer(Precept):
     """
     prog_name = 'top-drawer'
     version = __version__
+    config = TopDrawerConfig()
 
     def __init__(self):
-        super().__init__()
-        self._cache_file = os.path.join(
-            appdirs.user_cache_dir(self.prog_name),
-            'validations.yml'
+        super().__init__(
+            config_file=[
+                'top-drawer.toml',
+                os.path.join(
+                    appdirs.user_config_dir(self.prog_name),
+                    "config.toml"
+                )
+            ]
         )
+        self._cache_dir = appdirs.user_cache_dir(self.prog_name)
+        self._validations_cache = os.path.join(self._cache_dir, 'validations.yml')
+        self._thesaurus_cache = os.path.join(self._cache_dir, 'synonyms')
+        os.makedirs(self._thesaurus_cache, exist_ok=True)
 
     def read_cached_names(self):
-        if os.path.exists(self._cache_file):
-            self.logger.debug(f'Using cache file: {self._cache_file}')
-            with open(self._cache_file) as f:
+        if os.path.exists(self._validations_cache):
+            self.logger.debug(f'Using cache file: {self._validations_cache}')
+            with open(self._validations_cache) as f:
                 cached_names = yaml.load(f, Loader=yaml.RoundTripLoader)
         else:
-            os.makedirs(os.path.dirname(self._cache_file), exist_ok=True)
             cached_names = {}
         return cached_names
 
     def write_cached_names(self, obj):
-        self.logger.debug(f'Writing cache file: {self._cache_file}')
-        with open(self._cache_file, 'w+') as cf:
+        self.logger.debug(f'Writing cache file: {self._validations_cache}')
+        with open(self._validations_cache, 'w+') as cf:
             yaml.dump(obj, cf, Dumper=yaml.RoundTripDumper)
 
+    def word_path(self, word):
+        return os.path.join(self._thesaurus_cache, word)
+
+    def read_cached_thesaurus(self, word: str):
+        word_path = self.word_path(word)
+        if os.path.exists(word_path):
+            self.logger.debug(f'Reading synonyms from file: {word_path}')
+            with open(word_path) as f:
+                return yaml.safe_load(f)
+        return undefined
+
+    def write_cached_thesaurus(self, word: str, synonyms: list):
+        word_path = self.word_path(word)
+        self.logger.debug(f'Writing synonym file: {word_path}')
+        with open(word_path, 'w+') as f:
+            yaml.safe_dump(synonyms, f)
+
     @Command(
-        Argument(
-            'word',
-            help='The word to generate synonyms for'
-        ),
-        Argument(
-            '-c', '--casing',
-            choices=['snakecase', 'spinalcase'],
-            default='spinalcase',
-            help='The casing to apply to synonyms'
-        ),
-        Argument('--pypi',
-            help='Disable validation on pypi',
-            action='store_false'
-        ),
-        Argument(
-            '--npm',
-            help='Disable validation on npm',
-            action='store_false'
-        ),
-        Argument(
-            '-f', '--full',
-            help='Include the invalids in the output',
-            action='store_true'
-        ),
-        Argument(
-            '--definition',
-            help='Set to a number representing the tab of the search result'
-                 ' on thesaurus.com or `all`.',
-            default='0'
-        ),
+        _args.WORD,
+        _args.CASING,
+        _args.PYPI,
+        _args.NPM,
+        _args.FULL,
+        _args.ANTONYMS,
+        _args.USR,
+        _args.WORD_TYPE,
         description='Search for valid synonyms of the provided word.'
     )
-    async def search(self, word, casing, pypi, npm, full, definition):
+    async def search(self, word, casing, pypi, npm, full, antonyms, usr, word_type):
+        if not self.config.api_key:
+            self.logger.error(
+                'No bighugelabs.com api key provided!\n\n'
+                'Register for a free account at '
+                'https://words.bighugelabs.com/account/getkey\n\n'
+                'Set the api key with:\n\n'
+                '  - `--api-key` argument\n'
+                '  - `BHL_API_KEY` environment variable\n'
+                '  - `api_key` in a config file.\n'
+            )
+            sys.exit(1)
+
         ns = {
             'message': '',
             'done': False
@@ -113,32 +121,44 @@ class TopDrawer(Precept):
 
         cached_names = self.read_cached_names()
 
+        # Do all the action in a callback for the spinner
         async def operate():
             await asyncio.sleep(0.001)  # Make the spinner start
             casing_method = getattr(stringcase, casing)
-            synonyms = [
-                casing_method(x)
-                for x in get_synonyms(
-                    word,
-                    int(definition)
-                    if definition != 'all' else definition
-                )
-            ]
 
-            self.logger.debug(f'Found {len(synonyms)} synonyms')
-            validations = {
-                s: {
-                    'pypi': UNDONE,
-                    'npm': UNDONE
-                }
-                for s in synonyms
-            }
-
-            def _done(future, synonym='', validator=''):
-                validations[synonym][validator] = future.result()
-
-            ns['message'] = 'Validating synonyms ...'
             async with aiohttp.ClientSession() as session:
+                thesaurus_data = self.read_cached_thesaurus(word)
+
+                if thesaurus_data is undefined:
+                    thesaurus_data = await thesaurus(
+                        session,
+                        self.config.api_key,
+                        word,
+                    )
+                    self.write_cached_thesaurus(word, thesaurus_data)
+                synonyms = [
+                    casing_method(x) for x in reduce_thesaurus(
+                        thesaurus_data,
+                        word_type,
+                        antonyms,
+                        usr
+                    )
+                ]
+
+                self.logger.debug(f'Found {len(synonyms)} synonyms')
+                validations = {
+                    s: {
+                        'pypi': UNDONE,
+                        'npm': UNDONE
+                    }
+                    for s in synonyms
+                }
+
+                def _done(future, synonym='', validator=''):
+                    validations[synonym][validator] = future.result()
+
+                ns['message'] = 'Validating thesaurus ...'
+
                 tasks = []
                 for s in synonyms:
                     cached = cached_names.get(s)
@@ -205,20 +225,9 @@ class TopDrawer(Precept):
         await asyncio.gather(sp, op)
 
     @Command(
-        Argument(
-            'word',
-            help='The word to generate synonyms'
-        ),
-        Argument(
-            '--pypi',
-            help='Disable validation on pypi',
-            action='store_false'
-        ),
-        Argument(
-            '--npm',
-            help='Disable validation on npm',
-            action='store_false'
-        ),
+        _args.WORD,
+        _args.PYPI,
+        _args.NPM,
         description='Validate a name is available'
     )
     async def validate(self, word, pypi, npm):
@@ -237,7 +246,7 @@ class TopDrawer(Precept):
                 if npm_valid is None or npm_valid == UNDONE:
                     npm_valid = await validate_npm(session, word)
                     cached_names[word]['npm'] = npm_valid
-                print(f'npm: {format_valid(npm_valid)}')
+                print(f'npm:  {format_valid(npm_valid)}')
 
         self.write_cached_names(cached_names)
 
@@ -245,7 +254,7 @@ class TopDrawer(Precept):
         description='Clear the validations cache.'
     )
     async def clear_cache(self):
-        os.remove(self._cache_file)
+        os.remove(self._validations_cache)
 
 
 def cli():
