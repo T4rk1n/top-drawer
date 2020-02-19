@@ -1,5 +1,4 @@
 pytest
-thesaurus
 appdirs
 stringcase
 colorama
