@@ -4,4 +4,4 @@ stringcase
 colorama
 ruamel.yaml
 aiohttp
-precept==0.3.0
+precept>=0.6.3
