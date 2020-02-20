@@ -84,18 +84,7 @@ class TopDrawer(Precept):
         with open(word_path, 'w+') as f:
             yaml.safe_dump(synonyms, f)
 
-    @Command(
-        _args.WORD,
-        _args.CASING,
-        _args.PYPI,
-        _args.NPM,
-        _args.FULL,
-        _args.ANTONYMS,
-        _args.USR,
-        _args.WORD_TYPE,
-        description='Search for valid synonyms of the provided word.'
-    )
-    async def search(self, word, casing, pypi, npm, full, antonyms, usr, word_type):
+    async def get_thesaurus_from_word(self, session, word):
         if not self.config.api_key:
             self.logger.error(
                 'No bighugelabs.com api key provided!\n\n'
@@ -108,6 +97,29 @@ class TopDrawer(Precept):
             )
             sys.exit(1)
 
+        thesaurus_data = self.read_cached_thesaurus(word)
+
+        if thesaurus_data is undefined:
+            thesaurus_data = await thesaurus(
+                session,
+                self.config.api_key,
+                word,
+            )
+            self.write_cached_thesaurus(word, thesaurus_data)
+
+        return thesaurus_data
+
+    @Command(
+        _args.WORD,
+        _args.CASING,
+        _args.PYPI,
+        _args.NPM,
+        _args.FULL,
+        _args.WORD_TYPE,
+        _args.MODE,
+        description='Search for valid synonyms of the provided word.'
+    )
+    async def search(self, word, casing, pypi, npm, full, word_type, mode):
         ns = {
             'message': '',
             'done': False
@@ -127,21 +139,12 @@ class TopDrawer(Precept):
             casing_method = getattr(stringcase, casing)
 
             async with aiohttp.ClientSession() as session:
-                thesaurus_data = self.read_cached_thesaurus(word)
-
-                if thesaurus_data is undefined:
-                    thesaurus_data = await thesaurus(
-                        session,
-                        self.config.api_key,
-                        word,
-                    )
-                    self.write_cached_thesaurus(word, thesaurus_data)
+                thesaurus_data = await self.get_thesaurus_from_word(session, word)
                 synonyms = [
                     casing_method(x) for x in reduce_thesaurus(
                         thesaurus_data,
                         word_type,
-                        antonyms,
-                        usr
+                        mode
                     )
                 ]
 
@@ -249,6 +252,15 @@ class TopDrawer(Precept):
                 print(f'npm:  {format_valid(npm_valid)}')
 
         self.write_cached_names(cached_names)
+
+    @Command(
+        _args.WORD,
+        description='Get the thesaurus definition from Big Huge Thesaurus.'
+    )
+    async def thesaurus(self, word):
+        async with aiohttp.ClientSession() as session:
+            data = await self.get_thesaurus_from_word(session, word)
+            print(yaml.round_trip_dump(data))
 
     @Command(
         description='Clear the validations cache.'

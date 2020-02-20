@@ -27,19 +27,17 @@ FULL = Argument(
     help='Include the invalids in the output',
     action='store_true'
 )
-ANTONYMS = Argument(
-    '--antonyms',
-    action='store_true',
-    help='Include antonyms in the output.'
-)
-USR = Argument(
-    '--usr',
-    action='store_true',
-    help='Include `usr` results in the output.'
-)
 WORD_TYPE = Argument(
-    '--word-type',
+    '-w', '--word-type',
     choices=_thesaurus.WORD_TYPES,
-    default=_thesaurus.ALL,
-    help='Type of words to use, `all` for every types.'
+    nargs='+',
+    action='extend',
+    help='Type of words to use.'
+)
+MODE = Argument(
+    '-m', '--mode',
+    choices=_thesaurus.THESAURUS_MODES,
+    nargs='+',
+    action='extend',
+    help='Thesaurus mode'
 )
