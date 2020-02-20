@@ -1,19 +1,31 @@
+from typing import List
+
 import aiohttp
 
 API_URL_TEMPLATE = 'https://words.bighugelabs.com/api/2/{api_key}/{word}/json'
 
 NOUN = 'noun'
 VERB = 'verb'
+ADJECTIVE = 'adjective'
 
 SYNONYM = 'syn'
 ANTONYM = 'ant'
 USR = 'usr'  # Not really sure what this is.
-ALL = 'all'
+SIM = 'sim'
+REL = 'rel'
 
 WORD_TYPES = (
     NOUN,
     VERB,
-    ALL
+    ADJECTIVE
+)
+
+THESAURUS_MODES = (
+    SYNONYM,
+    ANTONYM,
+    USR,
+    SIM,
+    REL
 )
 
 
@@ -31,15 +43,15 @@ async def thesaurus(session: aiohttp.ClientSession, api_key: str, word: str):
 
 
 def reduce_thesaurus(
-        data: dict, word_type: str, include_antonyms: bool, include_usr: bool
+        data: dict,
+        word_types: List[str],
+        modes: List[str]
 ):
     thes = set()
     for category, word_data in data.items():
-        if word_type == ALL or category == word_type:
-            thes.update(word_data.get(SYNONYM, []))
-            if include_antonyms:
-                thes.update(word_data.get(ANTONYM, []))
-            if include_usr:
-                thes.update(word_data.get(USR, []))
+        if not word_types or category in word_types:
+            for mode, mode_data in word_data.items():
+                if not modes or mode in modes:
+                    thes.update(mode_data)
 
     return thes
