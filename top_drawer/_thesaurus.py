@@ -1,4 +1,5 @@
 from typing import List
+from urllib.parse import quote
 
 import aiohttp
 
@@ -30,7 +31,7 @@ THESAURUS_MODES = (
 
 
 async def thesaurus(session: aiohttp.ClientSession, api_key: str, word: str):
-    url = API_URL_TEMPLATE.format(api_key=api_key, word=word)
+    url = API_URL_TEMPLATE.format(api_key=api_key, word=quote(word))
     data = {}
     async with session.get(url) as response:  # type: aiohttp.ClientResponse
 
