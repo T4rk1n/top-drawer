@@ -14,17 +14,17 @@ CASING = Argument(
 )
 PYPI = Argument(
     '--pypi',
-    help='Disable validation on pypi',
+    help='Disable validation on pypi.',
     action='store_false'
 )
 NPM = Argument(
     '--npm',
-    help='Disable validation on npm',
+    help='Disable validation on npm.',
     action='store_false'
 )
 FULL = Argument(
     '-f', '--full',
-    help='Include the invalids in the output',
+    help='Include the invalids in the output.',
     action='store_true'
 )
 WORD_TYPE = Argument(
@@ -39,5 +39,5 @@ MODE = Argument(
     choices=_thesaurus.THESAURUS_MODES,
     nargs='+',
     action='extend',
-    help='Thesaurus mode'
+    help='Thesaurus mode.'
 )
