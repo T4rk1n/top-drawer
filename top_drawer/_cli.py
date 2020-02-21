@@ -2,6 +2,7 @@ import asyncio
 import functools
 import sys
 import os
+import shutil
 
 import appdirs
 import aiohttp
@@ -266,7 +267,7 @@ class TopDrawer(Precept):
         description='Clear the validations cache.'
     )
     async def clear_cache(self):
-        os.remove(self._validations_cache)
+        shutil.rmtree(self._cache_dir)
 
 
 def cli():
