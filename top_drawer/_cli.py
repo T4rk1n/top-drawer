@@ -32,7 +32,7 @@ def format_valid(valid):
 
 class TopDrawer(Precept):
     """
-    Search for synonyms and validate if the name is available on pypi or npm.
+    Thesaurus search and availability validators to find new package names.
     """
     prog_name = 'top-drawer'
     version = __version__
@@ -117,7 +117,7 @@ class TopDrawer(Precept):
         _args.FULL,
         _args.WORD_TYPE,
         _args.MODE,
-        description='Search for valid synonyms of the provided word.'
+        description='Search for valid words from the thesaurus definition.'
     )
     async def search(self, word, casing, pypi, npm, full, word_type, mode):
         ns = {
@@ -148,7 +148,7 @@ class TopDrawer(Precept):
                     )
                 ]
 
-                self.logger.debug(f'Found {len(synonyms)} synonyms')
+                self.logger.debug(f'Found {len(synonyms)} words.')
                 validations = {
                     s: {
                         'pypi': UNDONE,
@@ -231,7 +231,7 @@ class TopDrawer(Precept):
         _args.WORD,
         _args.PYPI,
         _args.NPM,
-        description='Validate a name is available'
+        description='Validate a word is available.'
     )
     async def validate(self, word, pypi, npm):
         cached_names = self.read_cached_names()
